@@ -17,5 +17,5 @@ Use Motorola 68k softcore process on DE1-SoC FPGA Board,
 
 ## Block diagram :
 
-<img src="image/blockdiagram.png" width="500">
+<img src="image/blockdiagram.png" >
 
