@@ -356,7 +356,7 @@ void I2C_start_command(void)
 ************************************************************************************/
 void I2C_stop_command(void)
 {
-    // set STO bit
+    // set STO bit: set CR(Command Register) = 0100_0000: STO, generate stop condition
     CR = 0x40;
 }
 
@@ -386,23 +386,23 @@ void I2C_wait_for_ACK(void)
 /************************************************************************************
 **   Write a byte of data to I2C transmit register (with start command)
 ************************************************************************************/
+
+//it takes slave device's address as an argument.
 void I2C_start_write(unsigned char byte)
 {
     //printf("starting I2C_start_write\r\n");
     // wait for I2C controller to be ready
     I2C_wait_for_transmit();
 
-    // write byte to transmit register
+    // write a byte(slave device's address) to the transmit register
     TXR = byte;
 
-    // set STA bit and WR bit and IACK bit in command register (0b10010001 = 0x91)
+    // set STA bit and WR(write) bit and IACK(Interrupt Acknowledge) bit in command register (0b10010001 = 0x91)
     CR = 0x91;
 
-    //printf("waiting for I2C_start_write - transmit\r\n");
     // wait for I2C controller to be ready
     I2C_wait_for_transmit();
 
-    //printf("waiting for I2C_start_write - ACK\r\n");
     // wait for ACK from slave
     I2C_wait_for_ACK();
 
@@ -449,12 +449,15 @@ unsigned char I2C_read(int cont)
    }
 
     else {              // read 1 byte and continue
-        // set RD bit and IACK bit in command register (0b00100001 = 0x21)
+        // set CR(command register) to 0010_0001 which is setting RD(read from slave) and IACK(Interrupt acknowledge)  
         CR = 0x21;
     }
 
     // wait for read data to be ready
+    // wait until SR(status register)'s 0Bit become 1. When one byte transfer has been completed, it becomes 1.
     while ( (SR & 0x01 ) != 0x01);
+    
+    // Get the value from the RXR(received register)
     temp = RXR;
 
     if (cont == 0) {    // read 1 byte and stop
@@ -752,10 +755,17 @@ void DAC_LED(void) {
 void ADC_Read(void) {
     unsigned char data = 0;
 
+    // Beofre we read the value, we have to select the correct channel by writting the channel number to I2C controller.
 	// write ADC slave adress 1 0 0 1 0 0 0 0(write)
     I2C_start_write(ADC_ADDR_WRITE);
 
-	// write control bytes for selecting ADC channel, starting with channel 0 with auto increment (0b0000_0100 = 0x04)
+	// write a ADC's control byte, by setting it to 0000_0100, ADC selects channel 0 with auto increment up to channel 3
+    // When channel is selected, we can read the DAC conversion output
+    // channel0 represents combine result from all thermometer, photo-resistor, potentiometer
+    // channel1: thermometer 
+    // channel2: photo-resistor
+    // channel3: potentiometer
+    
     I2C_write(0x04);
 
     I2C_stop_command();
