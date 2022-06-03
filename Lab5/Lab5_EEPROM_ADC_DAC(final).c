@@ -86,7 +86,8 @@
 #define SR       *(volatile unsigned char *)(0x00408008)    // status register
 
 /*********************************************************************************************
-**	I2C Addresses
+**	I2C Slave Addresses
+**  ADC/DAC p13 of the PCF8591 Datasheet
 *********************************************************************************************/
 #define EEPROM_ADDR_WRITE0      0xA0                   // for bank 0 (B0 = 0)
 #define EEPROM_ADDR_READ0       0xA1                   // for bank 0 (B0 = 0)
@@ -721,13 +722,13 @@ void DAC_LED(void) {
 	// write ADC slave adress 1 0 0 1 0 0 0 0(write)
     I2C_start_write(ADC_ADDR_WRITE);
 
-	// write control bytes 0 1 0 0 0 0 0 0 = 0x40 for enabling DAC
+	// write control bytes 0100_0000 = 0x40 for analog output voltage enable flag. D/A conversion
     I2C_write(0x40);
 
 
 	//endless loop
 	//continously increased the voltage value that goes into LED.
-	//for every 20 loop, the intensity of light goes up by1.
+	//for every 20 loop, the intensity of light goes up by 1.
 	//once it reaches 255, it starts from 0 again.
 	while (1) {
 
@@ -750,12 +751,12 @@ void DAC_LED(void) {
 }
 
 /************************************************************************************
-**   Read all four ADC channels and print them out
+**   Read all four ADC channels and print them out (ADC)
 ************************************************************************************/
 void ADC_Read(void) {
     unsigned char data = 0;
 
-    // Beofre we read the value, we have to select the correct channel by writting the channel number to I2C controller.
+    // Before we read the value, we have to select the correct channel by writting the channel number to I2C controller.
 	// write ADC slave adress 1 0 0 1 0 0 0 0(write)
     I2C_start_write(ADC_ADDR_WRITE);
 
@@ -768,13 +769,16 @@ void ADC_Read(void) {
     
     I2C_write(0x04);
 
-    I2C_stop_command();
+    //repeated start is used here. don't need to send the stop-bit
+    //I2C_stop_command();
 
     printf("\r\nReading 3 sensors");
 
-    // write slave address
+    // send the read address
+    // write ADC slave adress 1 0 0 1 0 0 0 1(read)
     I2C_start_write(ADC_ADDR_READ);
 
+    //I2C_read(1) continusouly read
     data = I2C_read(1);
     printf("\r\nDigital value of external input = 0x%x", data);
 
@@ -784,7 +788,8 @@ void ADC_Read(void) {
     data = I2C_read(1);
     printf("\r\nDigital value of photo-resistor = 0x%x", data);
 
-    data = I2C_read(0);                                         // this sends the NACK and stop command
+    // this sends the NACK and stop command
+    data = I2C_read(0);                                         
     printf("\r\nDigital value of potentiometer = 0x%x", data);
 
 }
